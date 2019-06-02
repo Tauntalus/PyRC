@@ -8,5 +8,5 @@ class client:
 		self.addr = addr				#connection address
 		self.nick = nick				#user nickname
 		
-		self.channelList = None			#assign empty list
-		self.channelList.append(general)# connect to general channel
+		self.channelSet = None			#assign empty set
+		self.channelSet.add(general)	# connect to general channel
