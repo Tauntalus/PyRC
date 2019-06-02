@@ -4,12 +4,20 @@ class server:
 	def __init__():
 		userList = None		#No users on startup
 		
-		channelList = None	#assign empty list
-		channelList.append(channel(None, general))	#add in channel "main"
+		channelSet = None	#assign empty list
+		channelSet.add(channel(None, general))	#add in channel "main"
 	
-	def __delete__():
-		for user in userList:
+	def __delete__(self, instance):
+		for user in self.userSet:
 			user.conn.close()
+		for channel in self.channelSet:
+			del channel
+			
+		#just to be sure we've deallocated everything, clear the userSet and channelSet
+		self.userSet.clear()
+		self.channelSet.clear()
+		del self.value
+		return
 			
 		
 	
