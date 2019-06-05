@@ -12,7 +12,7 @@ class channel:
 
 	#delete - disconnects all existing users and deletes the channel
 	def __delete__(self, instance):
-		for user in userSet:
+		for user in self.userSet:
 			user.conn.close()
 			
 		self.userSet.clear()
@@ -22,18 +22,18 @@ class channel:
 	
 	#forwardMsg - Takes a string and sends it to all users connected to the channel
 	def forwardMsg(msg):
-		for user in self.userSet:
+		for user in userSet:
 			user.conn.send(msg.encode('ASCII'))
 		return
 	
 	#addUser - takes a user and adds it to the channel's internal list of users
-	def addUser(user):
-		self.userSet.add(user)
+	def addUser(self, user):
+		userSet.add(user)
 		return
 	
 	#removeUser - takes a user and removes it from the channel, if they are there.
 	def removeUser(user):
-		err = self.userList.remove(user)
+		err = userList.remove(user)
 		if err:
 			print("Error removing user %s:", user.nick)
 			print(err)
