@@ -49,21 +49,21 @@ class server:
 			nick = args[0]
 			for users in self.userSet:
 				if users.nick == nick:
-					sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That nickname is already in use.\r\n').encode(self.encoding))
+					sender.conn.sendall((':PyRC.com 433 * ' + nick + ':That nickname is already in use.\r\n').encode(self.encoding))
 					return
-				sender.nick = nick
 				
-				sender.prefix = ':' + sender.nick + '!' + sender.userName + '@PyRC.com'
-				sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :Nickname succesfully assigned.\r\n').encode(self.encoding))
+				sender.setNick(nick)
+				if sender.verify():
+					sender = client.localUser(sender)
+					self.conn.sendall((':PyRC.com 001 ' + self.nick + ': Welcome to the Internet Relay Network ' + self.prefix).encode('UTF-8'))
 			return
 		
 		def userMsg(prefix, sender, args, msg):
-			sender.userName = args[0]
-			sender.mode = args[1]
-			sender.realName = args[3]
+			sender.setUserInfo(args[0], args[1], args[3])
 			
-			sender.prefix = ':' + sender.nick + '!' + sender.userName + '@PyRC.com'
-			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :User credentials succesfully assigned.\r\n').encode(self.encoding))
+			if sender.verify():
+				sender = client.localUser(sender)
+				self.conn.sendall((':PyRC.com 001 ' + self.nick + ': Welcome to the Internet Relay Network ' + self.prefix).encode('UTF-8'))
 			return
 		
 		def joinMsg(prefix, sender, args, msg):
@@ -75,12 +75,13 @@ class server:
 			for destChan in self.channelSet:
 				if destChan.name == destName:
 					destChan.addUser(sender)
-					destChan.forwardMsg(prefix + " " + msg)
+					destChan.forwardMsg(prefix + ' ' + msg)
+					destChan.forwardMsg(prefix + ' PRIVMSG ' + destChan.name + ' :' + sender.nick + ' has joined the channel.\r\n')
 					return
 			
 			#no channel with same name, make a new one
 			destChan = channel.channel({sender}, destName)
-			destChan.forwardMsg(prefix + " " + msg)
+			destChan.forwardMsg(prefix + ' ' + msg)
 			return
 		
 		def partMsg(prefix, sender, args, msg):
@@ -96,7 +97,7 @@ class server:
 					return
 			
 			#no channel with same name, throw an error
-			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That channel does not exist.\r\n').encode(self.encoding))
+			sender.conn.sendall((':PyRC.com :That channel does not exist.\r\n').encode(self.encoding))
 			return	
 		
 		def privMsg(prefix, sender, args, msg):
@@ -110,7 +111,7 @@ class server:
 						recChan.forwardMsg(prefix + ' ' + msg)
 				
 				#channel doesn't exist, error
-				sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That channel does not exist.\r\n').encode(self.encoding))
+				sender.conn.sendall((':PyRC.com :That channel does not exist.\r\n').encode(self.encoding))
 				
 			#personal message
 			for recp in self.userSet:
@@ -119,7 +120,7 @@ class server:
 					return
 			
 			#no messages, alert user
-			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That user does not exist.\r\n').encode(self.encoding))
+			sender.conn.sendall((':PyRC.com :That user does not exist.\r\n').encode(self.encoding))
 			return 
 		
 		def quitMsg(prefix, sender, args, msg):
@@ -134,7 +135,7 @@ class server:
 			return
 		
 		def default(prefix, sender, args, msg):
-			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :Your command could not be understood.\r\n').encode(self.encoding))
+			sender.conn.sendall((':PyRC.com :Your command could not be understood.\r\n').encode(self.encoding))
 			return
 		
 		#setup for the command dictionary
@@ -178,8 +179,9 @@ class server:
 				for channel in self.channelSet:
 					del channel
 				
-				self.serverSock.detach()
-				self.serverSock.close()
+				self.serverSock.shutdown(0)	#signal we're done
+				self.serverSock.detach()	#detach object
+				self.serverSock.close()		#destroy object
 				del self.serverSock
 				print("Sucessful shutdown.")
 				exit()
