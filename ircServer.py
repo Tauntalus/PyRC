@@ -58,25 +58,24 @@ class server:
 			if recp[0] is '#':
 				for recChan in self.channelSet:
 					if recChan.name == recp:
-						recChan.forwardMsg(('%s %s PRIVMSG %s', sender.prefix, recp, msg))
+						recChan.forwardMsg(sender.prefix + ' PRIVMSG ' + sender.nick + ' :' + msg)
 						return
 				
 				#no channel with that name - make one and add the user!
 				newChannel = channel.channel({sender}, recp)
 				self.channelSet.add(newChannel)
-				newChannel.forwardMsg(('%s %s PRIVMSG %s', sender.prefix, recp, msg))
+				newChannel.forwardMsg(sender.prefix + ' PRIVMSG ' + sender.nick + ' :' + msg)
 				return
 			
 			#privmsg to a user
 			else:
 				for recUser in selfuserSet:
 					if recUser.nick == recp:
-						recUser.conn.sendall(('%(pre)s %(nick)s PRIVMSG %(msg)s' % ({'pre': sender.prefix, 'nick': sender.nick, 'msg': msg})).encode('UTF-8'))
-						sender.conn.sendall(('%(pre)s %(nick)s PRIVMSG %(msg)s' % ({'pre': sender.prefix, 'nick': sender.nick, 'msg': msg})).encode('UTF-8'))
+						recUser.conn.sendall((sender.prefix + ' PRIVMSG ' + recUser.nick + ' :' + msg).encode('UTF-8'))
 						return
 				
 				#no user with that name - error the sender
-				sender.conn.sendall((':PyRC.com %s PRIVMSG Error: That user does not exist.' % sender.nick).encode('UTF-8'))
+				sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + 'Error: That user does not exist.').encode('UTF-8'))
 				return
 			
 			#shouldn't reach here, but if we do, notify sysadmin
@@ -86,8 +85,16 @@ class server:
 		def nickMsg(prefix, sender, argList):
 			print('registering nick...')
 			nick = argList[0]
+			
+			for existUser in self.userSet:
+				if existUser.nick == nick:
+					sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + 'Error: That username is taken.').encode('UTF-8'))
+					return
+				
 			sender.nick = nick
-			sender.prefix = ':%s!%s@PyRC.com' % (sender.nick, sender.nick)
+			if not sender.username:
+				sender.username = nick
+			sender.prefix = ':' + sender.nick + '!' + sender.username + '@PyRC.com'
 			return
 		
 		def userMsg(prefix, sender, argList):
@@ -108,13 +115,13 @@ class server:
 			for destChan in self.channelSet:
 				if destChan.name == dest:
 					destChan.addUser(sender)
-					destChan.forwardMsg('%s JOIN %s' % (prefix, destChan.name))
+					destChan.forwardMsg(sender.prefix + ' JOIN ' + destChan.name)
 					return
 			
 			#channel doesn't exist, create and join the user
 			newChannel = channel.channel({sender}, dest)
 			self.channelSet.add(newChannel)
-			newChannel.forwardMsg('%s JOIN %s' % (prefix, destChan.name))
+			newChannel.forwardMsg(sender.prefix + ' JOIN ' + destChan.name)
 			return
 		
 		def partMsg(sender, dest):

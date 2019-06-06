@@ -11,4 +11,4 @@ class localClient:
 		self.mode = 0
 		self.realName = ""
 		
-		self.prefix = "guest!guest@PyRC.com"				#default IRC prefix for sending stuff
+		self.prefix = ""				#default IRC prefix for sending stuff
