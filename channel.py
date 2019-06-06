@@ -13,7 +13,7 @@ class channel:
 	#forwardMsg - Takes a string and sends it to all users connected to the channel
 	def forwardMsg(self, msg):
 		for user in self.userSet:
-			user.conn.send(msg.encode('UTF-8'))
+			user.conn.send((msg + '\r\n').encode('UTF-8'))
 		return
 	
 	#addUser - takes a user and adds it to the channel's internal list of users

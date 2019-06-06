@@ -12,7 +12,7 @@ class server:
 	def __init__(self):
 		self.userSet = set()		#No users on startup
 		self.serverSock = None
-		
+		self.encoding = 'UTF-8'		#UTF-8 is used universally for IRC nowadays
 		self.channelSet = set()		#assign empty set
 		self.channelSet.add(channel.channel(set(), '#general'))	#add in channel "#general"
 		return
@@ -25,16 +25,16 @@ class server:
 	
 	#startServer - gets the server up and ready to run, but not yet in the main while loop
 	def start(self, port):
-		print("Setting up server")
+		print('Setting up server')
 		
 		#create and bind socket
-		print("Creating new socket...")
+		print('Creating new socket...')
 		self.serverSock = socket(AF_INET, SOCK_STREAM)
 		self.serverSock.bind(('', port))
-		print("Server socket bound to port %d" % port)
+		print('Server socket bound to port ' + str(port))
 
 		self.serverSock.listen(5)	#can handle 5 incoming connections at once
-		print("Listening...")
+		print('Listening...')
 		
 		#setup for select statement
 		inSocks = [self.serverSock]
@@ -45,119 +45,98 @@ class server:
 		
 		#command functions
 		
-		def privMsg(prefix, sender, argList):
-			
-			recp = argList[0]
-			msg = ""
-			
-			#build string
-			for word in argList[1:]:
-				msg = msg + word
-				
-			# hash character indicates channel message
-			if recp[0] is '#':
-				for recChan in self.channelSet:
-					if recChan.name == recp:
-						recChan.forwardMsg(sender.prefix + ' PRIVMSG ' + sender.nick + ' :' + msg)
-						return
-				
-				#no channel with that name - make one and add the user!
-				newChannel = channel.channel({sender}, recp)
-				self.channelSet.add(newChannel)
-				newChannel.forwardMsg(sender.prefix + ' PRIVMSG ' + sender.nick + ' :' + msg)
-				return
-			
-			#privmsg to a user
-			else:
-				for recUser in selfuserSet:
-					if recUser.nick == recp:
-						recUser.conn.sendall((sender.prefix + ' PRIVMSG ' + recUser.nick + ' :' + msg).encode('UTF-8'))
-						return
-				
-				#no user with that name - error the sender
-				sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + 'Error: That user does not exist.').encode('UTF-8'))
-				return
-			
-			#shouldn't reach here, but if we do, notify sysadmin
-			print("privmsg machine broke, have a nice day")
-			return #
-		
-		def nickMsg(prefix, sender, argList):
-			print('registering nick...')
-			nick = argList[0]
-			
-			for existUser in self.userSet:
-				if existUser.nick == nick:
-					sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + 'Error: That username is taken.').encode('UTF-8'))
+		def nickMsg(prefix, sender, args, msg):
+			nick = args[0]
+			for users in self.userSet:
+				if users.nick == nick:
+					sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That nickname is already in use.\r\n').encode(self.encoding))
 					return
+				sender.nick = nick
 				
-			sender.nick = nick
-			if not sender.username:
-				sender.username = nick
-			sender.prefix = ':' + sender.nick + '!' + sender.username + '@PyRC.com'
+				sender.prefix = ':' + sender.nick + '!' + sender.userName + '@PyRC.com'
+				sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :Nickname succesfully assigned.\r\n').encode(self.encoding))
 			return
 		
-		def userMsg(prefix, sender, argList):
-			print('Registering user creds...')
-			sender.username = argList[0]
-			sender.mode = argList[1]
-			#argList[2] is unused by IRC
-			sender.realname = argList[3]
+		def userMsg(prefix, sender, args, msg):
+			sender.userName = args[0]
+			sender.mode = args[1]
+			sender.realName = args[3]
+			
+			sender.prefix = ':' + sender.nick + '!' + sender.userName + '@PyRC.com'
+			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :User credentials succesfully assigned.\r\n').encode(self.encoding))
 			return
 		
-		def joinMsg(prefix, sender, argList):
-			print('Joining user to channel...')
-			dest = argList[0]
-			#make sure the user is joining a valid channel
-			if dest[0] is not '#':
-				dest = '#' + dest
-				
+		def joinMsg(prefix, sender, args, msg):
+			destName = args[0]
+			if destName[0] is not '#':
+				destName = '#' + destName
+			
+			#find channel with same name
 			for destChan in self.channelSet:
-				if destChan.name == dest:
+				if destChan.name == destName:
 					destChan.addUser(sender)
-					destChan.forwardMsg(sender.prefix + ' JOIN ' + destChan.name)
+					destChan.forwardMsg(prefix + " " + msg)
 					return
 			
-			#channel doesn't exist, create and join the user
-			newChannel = channel.channel({sender}, dest)
-			self.channelSet.add(newChannel)
-			newChannel.forwardMsg(sender.prefix + ' JOIN ' + destChan.name)
+			#no channel with same name, make a new one
+			destChan = channel.channel({sender}, destName)
+			destChan.forwardMsg(prefix + " " + msg)
 			return
 		
-		def partMsg(sender, dest):
-			print('Parting user from channel...')
-			#make sure the user is leaving a valid channel
-			if dest[0] is not '#':
-				dest = '#' + dest
-				
+		def partMsg(prefix, sender, args, msg):
+			destName = args[0]
+			if destName[0] is not '#':
+				destName = '#' + destName
+			
+			#find channel with same name
 			for destChan in self.channelSet:
-				if destChan.name == dest:
+				if destChan.name == destName:
 					destChan.removeUser(sender)
-					destChan.forwardMsg('%s PART %s' % (prefix, destChan.name))
+					destChan.forwardMsg(prefix + " " + msg)
 					return
 			
-			#channel doesn't exist, send error
-			sender.conn.sendall(('%s PRIVMSG Error: That channel doesn\'t exist.' % sender.nick).encode('UTF-8'))
-			return
+			#no channel with same name, throw an error
+			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That channel does not exist.\r\n').encode(self.encoding))
+			return	
 		
-		def quitMsg(prefix, sender, argList):
-			print('Disconnecting user...')
-			if len(argList) is not 0:
-				msg = ""
-				for word in argList[1:]:
-					msg = msg + word
-			else:
-				msg = 'User Quit'
+		def privMsg(prefix, sender, args, msg):
+			dest = args[0]
+			
+			#channel message
+			if dest[0] is '#':
+				for recChan in self.channelSet:
+					if recChan.name == dest:
+						recChan.addUser(sender)
+						recChan.forwardMsg(prefix + ' ' + msg)
 				
-			for leave in self.channelSet:
-				leave.removeUser(sender)
-				leave.forwardMsg('%s QUIT %s'  % (prefix, msg))
+				#channel doesn't exist, error
+				sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That channel does not exist.\r\n').encode(self.encoding))
+				
+			#personal message
+			for recp in self.userSet:
+				if recp.nick == dest:
+					recp.conn.sendall(prefix + ' ' + msg)
+					return
+			
+			#no messages, alert user
+			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :That user does not exist.\r\n').encode(self.encoding))
+			return 
+		
+		def quitMsg(prefix, sender, args, msg):
+			for chan in self.channelSet:
+				chan.removeUser(sender)
+				chan.forwardMsg(prefix + ' ' + msg)
+			
+			self.userSet.discard(sender)
 			return
 		
-		def default(prefix, sender, argList):
-			print('Unknown command.')
-			sender.conn.sendall((':PyRC.com %s PRIVMSG Error: I do not recognize that command.' % sender.nick).encode('ASCII'))
+		def meMsg(prefix, sender, args, msg):
 			return
+		
+		def default(prefix, sender, args, msg):
+			sender.conn.sendall((':PyRC.com PRIVMSG ' + sender.nick + ' :Your command could not be understood.\r\n').encode(self.encoding))
+			return
+		
 		#setup for the command dictionary
 		cmdDict = {}
 		cmdDict['NICK'] = nickMsg
@@ -167,6 +146,8 @@ class server:
 		cmdDict['PART'] = partMsg
 		cmdDict['QUIT'] = quitMsg
 		
+		cmdDict['ME'] = meMsg
+		cmdDict['ACTION'] = meMsg
 		
 		#msgHandler - this code implements the message processing that usually comes with an IRC server
 		def msgHandler(sender, msg):
@@ -174,18 +155,17 @@ class server:
 			msgSplit = msg.split()
 			if msg[0] is ':':
 				prefix = msgSplit[0]
-				cmd = msgSplit[1]
-				argSlice = msgSplit[2:]
+				cmd = msgSplit[1].upper()
+				args = msgSplit[2:]
 
 			else:
 				prefix = sender.prefix
-				cmd = msgSplit[0]
-				argSlice = msgSplit[1:]
+				cmd = msgSplit[0].upper()
+				args = msgSplit[1:]
 
 			#use the dictionary to find the command we run
 			cmdHandler = cmdDict.get(cmd, default)
-			cmdHandler(prefix, sender, argSlice)
-			sender.conn.sendall(msg.encode('UTF-8'))
+			cmdHandler(prefix, sender, args, msg)
 			return
 		
 		#delete - disconnect all users, close channels, and delete yourself
@@ -198,7 +178,9 @@ class server:
 				for channel in self.channelSet:
 					del channel
 				
+				self.serverSock.detach()
 				self.serverSock.close()
+				del self.serverSock
 				print("Sucessful shutdown.")
 				exit()
 			return handler
@@ -220,7 +202,7 @@ class server:
 					inSocks.append(conn)
 					outSocks.append(conn)
 					self.userSet.add(client.localClient(conn, addr))
-					print("Accepted connection from %s" % str(addr))
+					print('Accepted connection from ' + str(addr))
 				
 				#non-serverSock connection - incoming message
 				else:
@@ -228,8 +210,8 @@ class server:
 					user = self.getUserFromConn(s)
 					
 					if msg and user:
-						msgText = msg.decode('UTF-8')
-						print("Received message: %s" % msgText)
+						msgText = msg.decode(self.encoding)
+						print('Received message: ' + msgText)
 						msgHandler(user, msgText)
 					
 					#empty message/non-user indicated dead line - quit respectfully
