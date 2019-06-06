@@ -88,7 +88,6 @@ class server:
 			nick = argList[0]
 			sender.nick = nick
 			sender.prefix = ':%s!%s@PyRC.com' % (sender.nick, sender.nick)
-			sender.conn.sendall((':PyRC.com 001 %s :Welcome to PyRC, %s!' % (sender.nick, sender.userName)).encode('UTF-8'))
 			return
 		
 		def userMsg(prefix, sender, argList):
@@ -97,7 +96,6 @@ class server:
 			sender.mode = argList[1]
 			#argList[2] is unused by IRC
 			sender.realname = argList[3]
-			sender.conn.sendall((':PyRC.com 001 %s Use command processed, you are now registered!' % sender.nick).encode('UTF-8'))
 			return
 		
 		def joinMsg(prefix, sender, argList):
@@ -180,6 +178,7 @@ class server:
 			#use the dictionary to find the command we run
 			cmdHandler = cmdDict.get(cmd, default)
 			cmdHandler(prefix, sender, argSlice)
+			sender.conn.sendall(msg.encode('UTF-8'))
 			return
 		
 		#delete - disconnect all users, close channels, and delete yourself
