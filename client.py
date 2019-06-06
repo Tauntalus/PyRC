@@ -26,8 +26,8 @@ class localClient:
 		
 	def verify(self):
 		if (self.nick is not "") and (self.userName is not ""):
-			return true
-		return false
+			return True
+		return False
 	
 class localUser(localClient):
 	def __init__(self, clientBase):
