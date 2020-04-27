@@ -7,5 +7,5 @@ PyRC is highly unstable and not particularly optimized right now. I'm currently 
 # HOW TO USE
 PyRC runs on port 50625 by default. This can be changed in the main.py file to a port of your choosing. PyRC is ran via your python interpreter, simply enter a terminal, and run the command "python main.py" while in the project directory.
 
-#KNOWN BUGS
+# KNOWN BUGS
 Currently, PyRC is known to store the state of the users connected, but does not yet relay the messages back to the users who sent them.
