@@ -189,8 +189,8 @@ class server:
 	
 		#message handling
 		while True:
-			signal.signal(signal.SIGINT, killServer())	#If instructed to shut down, delete yourself
-			read, write, err = select.select(inSocks, outSocks, inSocks)						#read = readable sockets, write = writable sockets, err = bad sockets
+			signal.signal(signal.SIGINT, killServer())	                #If instructed to shut down, delete yourself
+			read, write, err = select.select(inSocks, outSocks, inSocks)    #read = readable sockets, write = writable sockets, err = bad sockets
 			
 			#check each readable socket first
 			for s in read:
