@@ -3,8 +3,8 @@ import time
 #client class
 class localClient:
 	def __init__(self, sock, sockAddr):
-		self.conn = sock				#connection port
-		self.addr = sockAddr			#connection address
+		self.conn = sock        #connection port
+		self.addr = sockAddr    #connection address
 		
 		self.nick = ""
 		self.userName = ""
@@ -53,4 +53,4 @@ class localUser(localClient):
 		return
 	
 	def verify(self):
-		return False	#already verified, no need to run verification code again
+		return False    #already verified, no need to run verification code again

@@ -5,8 +5,8 @@ class channel:
 	
 	#init - creates a new channel with a list of connected users and a name
 	def __init__(self, userSet, channelName):
-		self.userSet = userSet			#list of connected users
-		self.name = channelName	#name of channel
+		self.userSet = userSet  #list of connected users
+		self.name = channelName #name of channel
 		#TODO: Message of the Day fetching and setting
 		return
 	

@@ -1,19 +1,19 @@
 
-from socket	import *					#socket library
-import select							#select helps check for readable/writable channels
-import signal							#signal 
-import channel							#need the channel definition
-import client							#need the client definition
+from socket import *    #socket library
+import select		#select helps check for readable/writable channels
+import signal		#signal 
+import channel		#need the channel definition
+import client		#need the client definition
 
 
 class server:
 	
 	#init - creates a new server with no users and one channel, general
 	def __init__(self):
-		self.userSet = set()		#No users on startup
+		self.userSet = set()	    #No users on startup
 		self.serverSock = None
-		self.encoding = 'UTF-8'		#UTF-8 is used universally for IRC nowadays
-		self.channelSet = set()		#assign empty set
+		self.encoding = 'UTF-8'	    #UTF-8 is used universally for IRC nowadays
+		self.channelSet = set()	    #assign empty set
 		self.channelSet.add(channel.channel(set(), '#general'))	#add in channel "#general"
 		return
 	
@@ -33,7 +33,7 @@ class server:
 		self.serverSock.bind(('', port))
 		print('Server socket bound to port ' + str(port))
 
-		self.serverSock.listen(5)	#can handle 5 incoming connections at once
+		self.serverSock.listen(5)   #can handle 5 incoming connections at once
 		print('Listening...')
 		
 		#setup for select statement
